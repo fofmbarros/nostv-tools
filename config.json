@@ -1,0 +1,23 @@
+{
+    "appVersion": "2.14.2.3",
+    "mpdUserAgent": "AndroidTVNOSTV/1.0.1.5(10001105) (Linux;Android 9) ExoPlayerLib/2.15.0",
+    "services": {
+        "fileServer": {
+            "disabled": false,
+            "port": 6200
+        },
+        "proxy": {
+            "disabled": false,
+            "port": 6201,
+            "publicUrl": "0.0.0.0"
+        },
+        "session": {
+            "disabled": false,
+            "cronExpression": "0 */4 * * *"
+        },
+        "xmltv": {
+            "disabled": false,
+            "cronExpression": "0 1 */3 * *"
+        }
+    }
+}
