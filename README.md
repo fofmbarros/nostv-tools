@@ -19,6 +19,7 @@ NOSTV Tools is a collection of tools in which customers of portuguese ISP provid
     -   Two files need to be placed in a `files` directory:
 
         -   `authNSession.json` - Copy the value found in `localStorage` under `AuthN.XXX`
+        -   `authZSession.json` - Copy the value found in `localStorage` under `AuthZ.XXX`
 
         -   `user.json`
 
