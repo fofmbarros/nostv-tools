@@ -4,6 +4,7 @@ import { CronJob } from 'cron'
 import type {
     AuthNSessionStorage,
     AuthZSessionResponse,
+    AuthZSessionStorage,
     SignInDeviceResponse
 } from './session.dtos.js'
 import { AuthZSession } from './session.entities.js'
@@ -55,7 +56,7 @@ class SessionService {
         const authNStorageValue = JSON.stringify(authNSession)
 
         const authZStorageKey = `AuthZ.${this.user.client.authZId}`
-        const authZStorageValue = JSON.stringify(authZSession.toStorage())
+        const authZStorageValue = JSON.stringify(authZSession)
 
         const deviceIdStorageKey = 'deviceId'
         const deviceIdStorageValue = this.user.device.id
@@ -200,7 +201,7 @@ class SessionService {
                     'X-Core-DeviceName': 'PC Firefox',
                     'X-Core-DeviceSubType': 'PC',
                     'X-Core-DeviceType': 'web',
-                    Authorization: `Bearer ${session.access_token}`
+                    Authorization: `Bearer ${session.AccessToken}`
                 }
             }
         )
@@ -280,7 +281,7 @@ class SessionService {
         }
     }
 
-    private getAuthZSessionFromFile(): AuthZSessionResponse | null {
+    private getAuthZSessionFromFile(): AuthZSessionStorage | null {
         this.logger.info('[Session] Reading AuthZ session from file.')
 
         try {
@@ -288,7 +289,7 @@ class SessionService {
                 join(__dirname, '../files/authZSession.json')
             )
 
-            const sessionResponse: AuthZSessionResponse = JSON.parse(
+            const sessionResponse: AuthZSessionStorage = JSON.parse(
                 sessionFile.toString()
             )
 
@@ -299,9 +300,7 @@ class SessionService {
         }
     }
 
-    private saveAuthZSessionToFile(
-        authZSession: AuthZSessionResponse
-    ): boolean {
+    private saveAuthZSessionToFile(authZSession: AuthZSessionStorage): boolean {
         this.logger.info('[Session] Saving AuthZ session to file.')
 
         try {
@@ -352,23 +351,26 @@ class SessionService {
 
         this.logger.info(
             `[Session] Current AuthZ session was valid until: ${new Date(
-                currentAuthZSession.issued_at + currentAuthZSession.expires_in
+                currentAuthZSession.IssuedAt + currentAuthZSession.ExpiresIn
             ).toLocaleString()}`
         )
 
         const newAuthZSessionResponse = await this.fetchAuthZSession(
-            currentAuthZSession.id_token
+            currentAuthZSession.IdToken
         )
         if (newAuthZSessionResponse === null)
             throw new Error(
                 'Could not generate a new session, fetch a new one from the app.'
             )
-        this.saveAuthZSessionToFile(newAuthZSessionResponse)
 
-        this.authZSession = AuthZSession.fromResponse(newAuthZSessionResponse)
+        const authZSession = AuthZSession.fromResponse(newAuthZSessionResponse)
+
+        this.saveAuthZSessionToFile(authZSession)
+
+        this.authZSession = authZSession
         this.logger.info(
             `[Session] New AuthZ session is valid until: ${new Date(
-                currentAuthZSession.issued_at + currentAuthZSession.expires_in
+                currentAuthZSession.IssuedAt + currentAuthZSession.ExpiresIn
             ).toLocaleString()}`
         )
 

@@ -42,85 +42,64 @@ class XCore {
     }
 }
 
-class AuthZSession implements AuthZSessionResponse {
-    readonly access_token: string
-    readonly token_type: string
-    readonly scope: string
-    readonly expires_in: number
-    readonly issued_at: number
-    readonly status: string
-    readonly refresh_token: null
-    readonly refresh_token_expires_in: number
-    readonly refresh_token_issued_at: null
-    readonly refresh_token_status: null
-    readonly refresh_count: number
-    readonly id_token: string
+class AuthZSession implements AuthZSessionStorage {
+    readonly AccessToken: string
+    readonly ExpiresIn: number
+    readonly AccessTokenExpirationDate: string
+    readonly IdToken: string
+    readonly IssuedAt: number
+    readonly Scope: string
+    readonly Status: string
+    readonly TokenType: string
+    readonly UserSA: string
+    readonly UserCA: string
 
     constructor(
-        access_token: string,
-        token_type: string,
-        scope: string,
-        expires_in: number,
-        issued_at: number,
-        status: string,
-        refresh_token: null,
-        refresh_token_expires_in: number,
-        refresh_token_issued_at: null,
-        refresh_token_status: null,
-        refresh_count: number,
-        id_token: string
+        AccessToken: string,
+        ExpiresIn: number,
+        AccessTokenExpirationDate: string,
+        IdToken: string,
+        IssuedAt: number,
+        Scope: string,
+        Status: string,
+        TokenType: string,
+        UserSA: string,
+        UserCA: string
     ) {
-        this.access_token = access_token
-        this.token_type = token_type
-        this.scope = scope
-        this.expires_in = expires_in
-        this.issued_at = issued_at
-        this.status = status
-        this.refresh_token = refresh_token
-        this.refresh_token_expires_in = refresh_token_expires_in
-        this.refresh_token_issued_at = refresh_token_issued_at
-        this.refresh_token_status = refresh_token_status
-        this.refresh_count = refresh_count
-        this.id_token = id_token
+        this.AccessToken = AccessToken
+        this.ExpiresIn = ExpiresIn
+        this.AccessTokenExpirationDate = AccessTokenExpirationDate
+        this.IdToken = IdToken
+        this.IssuedAt = IssuedAt
+        this.Scope = Scope
+        this.Status = Status
+        this.TokenType = TokenType
+        this.UserSA = UserSA
+        this.UserCA = UserCA
     }
 
     static fromResponse(response: AuthZSessionResponse): AuthZSession {
-        return new AuthZSession(
-            response.access_token,
-            response.token_type,
-            response.scope,
-            response.expires_in,
-            response.issued_at,
-            response.status,
-            response.refresh_token,
-            response.refresh_token_expires_in,
-            response.refresh_token_issued_at,
-            response.refresh_token_status,
-            response.refresh_count,
-            response.id_token
-        )
-    }
-
-    toStorage(): AuthZSessionStorage {
-        const payload = decode(this.id_token) as {
+        const payload = decode(response.id_token) as {
             user_ca: string
             user_sa: string
         }
 
-        return {
-            AccessToken: this.access_token,
-            ExpiresIn: this.expires_in,
-            AccessTokenExpirationDate: new Date(
-                this.issued_at + this.expires_in
+        return new AuthZSession(
+            response.access_token,
+            response.expires_in,
+            new Date(
+                // eslint-disable-next-line @typescript-eslint/restrict-plus-operands, @typescript-eslint/no-non-null-assertion
+                response.refresh_token_issued_at! +
+                    response.refresh_token_expires_in
             ).toISOString(),
-            IdToken: this.id_token,
-            IssuedAt: this.issued_at,
-            Scope: this.scope,
-            Status: this.status,
-            TokenType: this.token_type,
-            UserSA: payload.user_sa,
-            UserCA: payload.user_ca
-        }
+            response.id_token,
+            response.issued_at,
+            response.scope,
+            response.status,
+            response.token_type,
+            payload.user_sa,
+            payload.user_ca
+        )
     }
 }
 

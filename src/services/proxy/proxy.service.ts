@@ -62,7 +62,7 @@ class ProxyService {
             {
                 params: {
                     sessionType: 'view',
-                    access_token: session.access_token,
+                    access_token: session.AccessToken,
                     client_id: this.user.client.authZId
                 },
                 headers: {
@@ -80,7 +80,7 @@ class ProxyService {
                     'X-Core-AppVersion': this.config.appVersion,
                     'X-Core-ContentRatingLimit': '0',
                     'X-Apikey': this.user.client.authZId,
-                    Authorization: `Bearer ${session.access_token}`,
+                    Authorization: `Bearer ${session.AccessToken}`,
                     'User-Agent': this.user.userAgent
                 }
             }
