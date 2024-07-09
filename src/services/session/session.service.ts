@@ -44,9 +44,7 @@ class SessionService {
     ): Promise<Page> {
         this.logger.info('[Session] Setting up app page..')
 
-        const browser = await launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        })
+        const browser = await launch()
         const page = await browser.newPage()
 
         await page.setUserAgent(this.user.userAgent)
