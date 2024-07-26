@@ -68,14 +68,18 @@ class Config {
         }
     }
 
+    readonly chromiumPath: string
+
     constructor(
         appVersion: string,
         mpdUserAgent: string,
-        services: ConfigServices
+        services: ConfigServices,
+        chromiumPath: string
     ) {
         this.appVersion = appVersion
         this.mpdUserAgent = mpdUserAgent
         this.services = services
+        this.chromiumPath = chromiumPath
     }
 }
 

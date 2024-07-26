@@ -19,5 +19,6 @@
             "disabled": false,
             "cronExpression": "0 1 */3 * *"
         }
-    }
+    },
+    "chromiumPath": ""
 }

@@ -44,7 +44,10 @@ class SessionService {
     ): Promise<Page> {
         this.logger.info('[Session] Setting up app page..')
 
-        const browser = await launch()
+        const browser = await launch({
+            headless: true,
+            executablePath: this.config.chromiumPath
+        })
         const page = await browser.newPage()
 
         await page.setUserAgent(this.user.userAgent)
