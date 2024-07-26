@@ -14,16 +14,6 @@ interface AssetResponse {
     }
 }
 
-interface AssetErrorResponse {
-    Error: {
-        Code: string
-        Title: string
-        Message: string
-        CorrelationId: string
-        UiType: number
-    }
-}
-
 interface ClmTokenPayload {
     typ: 'ContentAuthZ'
     ver: '1.0'
@@ -81,7 +71,6 @@ interface RenewalLicenseResponse {
 
 export type {
     AssetResponse,
-    AssetErrorResponse,
     ClmTokenPayload,
     LicenseSessionPayload,
     AssetLicenseSessionResponse,

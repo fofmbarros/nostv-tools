@@ -1,4 +1,10 @@
-import express, { type RequestHandler, type Express, raw } from 'express'
+import express, {
+    type RequestHandler,
+    type Express,
+    type Request,
+    type Response,
+    raw
+} from 'express'
 import cors from 'cors'
 import type { Logger } from 'pino'
 import axios from 'axios'
@@ -169,145 +175,168 @@ class ProxyService {
         return LicenseType.LICENSE_REQUEST_RENEWAL
     }
 
-    run(): void {
+    private async getAssetController(
+        req: Request,
+        res: Response
+    ): Promise<void> {
+        this.logger.info('[Proxy] Asset endpoint called.')
+
+        try {
+            const requestSchema = z.object({
+                query: z.object({
+                    id: z.string()
+                })
+            })
+
+            const { query } = requestSchema.parse(req)
+
+            this.logger.info(`[Proxy] Asset: ${query.id}.`)
+
+            const assetResponse = await this.fetchAsset(query.id)
+
+            if (this.assetSession !== null)
+                try {
+                    this.logger.info(
+                        `[Proxy] Tearing down current ${this.assetSession.assetId} asset session.`
+                    )
+                    await this.teardownAssetLicenseSession(
+                        this.assetSession.licenseSessionToken
+                    )
+                } catch (e) {
+                    this.logger.error(e)
+                }
+
+            const asset = Asset.fromResponse(assetResponse)
+
+            const assetLicenseSessionResponse =
+                await this.fetchAssetLicenseSession(asset.clmToken)
+
+            this.assetSession = new AssetSession(
+                query.id,
+                asset.clmToken,
+                assetLicenseSessionResponse.sessionToken
+            )
+
+            const mpdFileResponse = await axios.get<string>(asset.path, {
+                headers: {
+                    'User-Agent': this.config.mpdUserAgent
+                }
+            })
+
+            res.setHeader('Content-Type', 'application/dash+xml')
+            res.send(mpdFileResponse.data)
+        } catch (e) {
+            this.logger.error(e)
+            res.sendStatus(400)
+        }
+    }
+
+    private async postLicensesController(
+        req: Request,
+        res: Response
+    ): Promise<void> {
+        this.logger.info('[Proxy] Licenses endpoint called.')
+        try {
+            const requestSchema = z.object({
+                body: z.instanceof(Buffer)
+            })
+
+            const { body } = requestSchema.parse(req)
+
+            const assetSession = this.assetSession
+
+            if (assetSession === null)
+                throw new Error('Could not found asset session.')
+
+            const challengeb64 = body.toString('base64')
+            const licenseType = this.getRequestMessageType(challengeb64)
+            let license64: string
+
+            this.logger.info(
+                `[Proxy] License type: ${LicenseType[licenseType]}`
+            )
+            if (
+                licenseType === LicenseType.SERVICE_CERTIFICATE_REQUEST ||
+                licenseType === LicenseType.LICENSE_REQUEST_NEW
+            ) {
+                const fetchLicenseResponse = await this.fetchLicense(
+                    assetSession.clmToken,
+                    assetSession.licenseSessionToken,
+                    challengeb64
+                )
+                license64 = fetchLicenseResponse.license[0]
+            } else {
+                const renewLicenseResponse = await this.renewLicense(
+                    assetSession.licenseSessionToken,
+                    challengeb64
+                )
+                license64 = renewLicenseResponse.license
+
+                if (this.assetSession !== null) {
+                    this.assetSession.licenseSessionToken =
+                        renewLicenseResponse.sessionToken
+                }
+            }
+
+            const licenseBuf = Buffer.from(license64, 'base64')
+            res.setHeader('Content-Type', 'application/octet-stream')
+            res.send(licenseBuf)
+        } catch (e) {
+            this.logger.error(e)
+            res.sendStatus(400)
+        }
+    }
+
+    private async postTeardownController(
+        req: Request,
+        res: Response
+    ): Promise<void> {
+        this.logger.info('[Proxy] Teardown endpoint called.')
+        try {
+            const requestSchema = z.object({
+                body: z.object({
+                    sessionToken: z.string()
+                })
+            })
+
+            const { body } = requestSchema.parse(req)
+            await this.teardownAssetLicenseSession(body.sessionToken)
+            res.sendStatus(200)
+        } catch (e) {
+            this.logger.error(e)
+            res.sendStatus(400)
+        }
+    }
+
+    private setupRoutes(): void {
         this.app.use(
             cors({
                 origin: '*'
             })
         )
-
-        this.app.get('/asset', raw({ type: 'application/dash+xml' }), (async (
-            req,
-            res
-        ) => {
-            this.logger.info('[Proxy] Asset endpoint called.')
-
-            try {
-                const requestSchema = z.object({
-                    query: z.object({
-                        id: z.string()
-                    })
-                })
-
-                const { query } = requestSchema.parse(req)
-
-                this.logger.info(`[Proxy] Asset: ${query.id}.`)
-
-                const assetResponse = await this.fetchAsset(query.id)
-
-                if (this.assetSession !== null)
-                    try {
-                        this.logger.info(
-                            `[Proxy] Tearing down current ${this.assetSession.assetId} asset session.`
-                        )
-                        await this.teardownAssetLicenseSession(
-                            this.assetSession.licenseSessionToken
-                        )
-                    } catch (e) {
-                        this.logger.error(e)
-                    }
-
-                const asset = Asset.fromResponse(assetResponse)
-
-                const assetLicenseSessionResponse =
-                    await this.fetchAssetLicenseSession(asset.clmToken)
-
-                this.assetSession = new AssetSession(
-                    query.id,
-                    asset.clmToken,
-                    assetLicenseSessionResponse.sessionToken
-                )
-
-                const mpdFileResponse = await axios.get<string>(asset.path, {
-                    headers: {
-                        'User-Agent': this.config.mpdUserAgent
-                    }
-                })
-
-                res.setHeader('Content-Type', 'application/dash+xml')
-                res.send(mpdFileResponse.data)
-            } catch (e) {
-                this.logger.error(e)
-                res.sendStatus(400)
-            }
-        }) as RequestHandler)
+        this.app.get(
+            '/asset',
+            raw({ type: 'application/dash+xml' }),
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            this.getAssetController as RequestHandler
+        )
 
         this.app.post(
             '/licenses',
             raw({ type: 'application/octet-stream' }),
-            (async (req, res) => {
-                this.logger.info('[Proxy] Licenses endpoint called.')
-                try {
-                    const requestSchema = z.object({
-                        body: z.instanceof(Buffer)
-                    })
-
-                    const { body } = requestSchema.parse(req)
-
-                    const assetSession = this.assetSession
-
-                    if (assetSession === null)
-                        throw new Error('Could not found asset session.')
-
-                    const challengeb64 = body.toString('base64')
-                    const licenseType = this.getRequestMessageType(challengeb64)
-                    let license64: string
-
-                    this.logger.info(
-                        `[Proxy] License type: ${LicenseType[licenseType]}`
-                    )
-                    if (
-                        licenseType ===
-                            LicenseType.SERVICE_CERTIFICATE_REQUEST ||
-                        licenseType === LicenseType.LICENSE_REQUEST_NEW
-                    ) {
-                        const fetchLicenseResponse = await this.fetchLicense(
-                            assetSession.clmToken,
-                            assetSession.licenseSessionToken,
-                            challengeb64
-                        )
-                        license64 = fetchLicenseResponse.license[0]
-                    } else {
-                        const renewLicenseResponse = await this.renewLicense(
-                            assetSession.licenseSessionToken,
-                            challengeb64
-                        )
-                        license64 = renewLicenseResponse.license
-
-                        if (this.assetSession !== null) {
-                            this.assetSession.licenseSessionToken =
-                                renewLicenseResponse.sessionToken
-                        }
-                    }
-
-                    const licenseBuf = Buffer.from(license64, 'base64')
-                    res.setHeader('Content-Type', 'application/octet-stream')
-                    res.send(licenseBuf)
-                } catch (e) {
-                    this.logger.error(e)
-                    res.sendStatus(400)
-                }
-            }) as RequestHandler
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            this.postLicensesController as RequestHandler
         )
 
-        this.app.post('/teardown', (async (req, res) => {
-            this.logger.info('[Proxy] Teardown endpoint called.')
-            try {
-                const requestSchema = z.object({
-                    body: z.object({
-                        sessionToken: z.string()
-                    })
-                })
+        this.app.post(
+            '/teardown',
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            this.postTeardownController as RequestHandler
+        )
+    }
 
-                const { body } = requestSchema.parse(req)
-                await this.teardownAssetLicenseSession(body.sessionToken)
-                res.sendStatus(200)
-            } catch (e) {
-                this.logger.error(e)
-                res.sendStatus(400)
-            }
-        }) as RequestHandler)
-
+    run(): void {
+        this.setupRoutes()
         this.app.listen(this.config.services.proxy.port, () => {
             this.logger.info(
                 `[Proxy] running on port ${this.config.services.proxy.port}.`
