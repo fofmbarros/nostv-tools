@@ -314,25 +314,24 @@ class ProxyService {
                 origin: '*'
             })
         )
-        this.app.get(
-            '/asset',
-            raw({ type: 'application/dash+xml' }),
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            this.getAssetController as RequestHandler
-        )
+        this.app.get('/asset', raw({ type: 'application/dash+xml' }), (async (
+            req,
+            res
+        ) => {
+            await this.getAssetController(req, res)
+        }) as RequestHandler)
 
         this.app.post(
             '/licenses',
             raw({ type: 'application/octet-stream' }),
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            this.postLicensesController as RequestHandler
+            (async (req, res) => {
+                await this.postLicensesController(req, res)
+            }) as RequestHandler
         )
 
-        this.app.post(
-            '/teardown',
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            this.postTeardownController as RequestHandler
-        )
+        this.app.post('/teardown', (async (req, res) => {
+            await this.postTeardownController(req, res)
+        }) as RequestHandler)
     }
 
     run(): void {
