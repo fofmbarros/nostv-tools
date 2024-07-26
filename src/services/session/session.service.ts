@@ -46,7 +46,8 @@ class SessionService {
 
         const browser = await launch({
             headless: true,
-            executablePath: this.config.chromiumPath
+            executablePath: this.config.chromiumPath,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
         })
         const page = await browser.newPage()
 
