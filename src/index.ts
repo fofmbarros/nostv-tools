@@ -24,39 +24,44 @@ const logger = pino({
     }
 })
 
-const config = new Config(configFile.appVersion, configFile.mpdUserAgent, {
-    fileServer: {
-        ...configFile.services.fileServer,
-        disabled:
-            process.env.CONFIG_FILESERVER_DISABLED === 'true' ||
-            configFile.services.fileServer.disabled
+const config = new Config(
+    configFile.appVersion,
+    configFile.mpdUserAgent,
+    {
+        fileServer: {
+            ...configFile.services.fileServer,
+            disabled:
+                process.env.CONFIG_FILESERVER_DISABLED === 'true' ||
+                configFile.services.fileServer.disabled
+        },
+        proxy: {
+            ...configFile.services.proxy,
+            disabled:
+                process.env.CONFIG_PROXY_DISABLED === 'true' ||
+                configFile.services.proxy.disabled,
+            publicUrl:
+                process.env.CONFIG_PROXY_PUBLIC_URL ??
+                configFile.services.proxy.publicUrl
+        },
+        session: {
+            disabled:
+                process.env.CONFIG_SESSION_DISABLED === 'true' ||
+                configFile.services.session.disabled,
+            cronExpression:
+                process.env.CONFIG_SESSION_CRON ??
+                configFile.services.session.cronExpression
+        },
+        xmltv: {
+            disabled:
+                process.env.CONFIG_XMLTV_DISABLED === 'true' ||
+                configFile.services.xmltv.disabled,
+            cronExpression:
+                process.env.CONFIG_XMLTV_CRON ??
+                configFile.services.xmltv.cronExpression
+        }
     },
-    proxy: {
-        ...configFile.services.proxy,
-        disabled:
-            process.env.CONFIG_PROXY_DISABLED === 'true' ||
-            configFile.services.proxy.disabled,
-        publicUrl:
-            process.env.CONFIG_PROXY_PUBLIC_URL ??
-            configFile.services.proxy.publicUrl
-    },
-    session: {
-        disabled:
-            process.env.CONFIG_SESSION_DISABLED === 'true' ||
-            configFile.services.session.disabled,
-        cronExpression:
-            process.env.CONFIG_SESSION_CRON ??
-            configFile.services.session.cronExpression
-    },
-    xmltv: {
-        disabled:
-            process.env.CONFIG_XMLTV_DISABLED === 'true' ||
-            configFile.services.xmltv.disabled,
-        cronExpression:
-            process.env.CONFIG_XMLTV_CRON ??
-            configFile.services.xmltv.cronExpression
-    }
-})
+    process.env.PUPPETEER_EXECUTABLE_PATH ?? configFile.chromiumPath
+)
 
 const run = async (): Promise<void> => {
     try {

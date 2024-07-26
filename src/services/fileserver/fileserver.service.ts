@@ -13,25 +13,27 @@ class FileServerService {
     constructor(logger: Logger, config: Config) {
         this.logger = logger
         this.config = config
+        this.app = express()
+    }
 
-        const app = express()
-        app.use(
+    private setupRoutes(): void {
+        this.app.use(
             cors({
                 origin: '*'
             })
         )
-        app.use(
+        this.app.use(
             '/playlist.m3u',
             express.static(join(__dirname, '../files/playlist.m3u'))
         )
-        app.use(
+        this.app.use(
             '/epg.xml.gz',
             express.static(join(__dirname, '../files/epg.xml.gz'))
         )
-        this.app = app
     }
 
     run(): void {
+        this.setupRoutes()
         this.app.listen(this.config.services.fileServer.port, () => {
             this.logger.info(
                 `[File Server] running on port ${this.config.services.fileServer.port}.`

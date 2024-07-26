@@ -10,7 +10,7 @@ import type {
 import { AuthZSession } from './session.entities.js'
 import type Config from '../../config.js'
 import type User from '../../user.js'
-import { launch, type Page } from 'puppeteer'
+import { launch, type Page } from 'puppeteer-core'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { sleep, __dirname } from '../../utils.js'
 import { join } from 'node:path'
@@ -45,12 +45,19 @@ class SessionService {
         this.logger.info('[Session] Setting up app page..')
 
         const browser = await launch({
+            headless: true,
+            executablePath: this.config.chromiumPath,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
         })
         const page = await browser.newPage()
 
         await page.setUserAgent(this.user.userAgent)
-        await page.goto(this.config.endpoints.app)
+        const redirected = await page.goto(this.config.endpoints.app, {
+            waitUntil: 'domcontentloaded'
+        })
+
+        if (redirected == null)
+            throw new Error('Could not redirect to app page')
 
         const authNStorageKey = `AuthN.${this.user.client.authNId}`
         const authNStorageValue = JSON.stringify(authNSession)
